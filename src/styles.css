@@ -1,0 +1,48 @@
+/* ✅ General Styling */
+body {
+  font-family: "Roboto", sans-serif;
+  background: #181818;
+  color: #fff;
+  margin: 0;
+  padding: 0;
+}
+
+.app-container {
+  text-align: center;
+  padding: 20px;
+}
+
+/* ✅ Input box */
+.input-container {
+  margin: 20px;
+}
+
+input {
+  width: 80%;
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  outline: none;
+  font-size: 16px;
+}
+
+/* ✅ Player container */
+.player-container {
+  max-width: 90%;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* ✅ Custom buttons */
+.video-js .vjs-control-bar {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.video-js .vjs-button {
+  color: #fff;
+}
+
+.video-js .vjs-play-control:hover,
+.video-js .vjs-volume-panel:hover {
+  background: #ff0000;
+}
