@@ -1,167 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>M3U8 Player</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <style>
-        /* General Styles */
-        body { 
-            font-family: Arial, sans-serif; 
-            text-align: center; 
-            background-color: #414141; /* Dark gray background matching logo */
-            color: white; 
-            margin: 0; 
-            padding: 20px; 
-        }
-        #container { 
-            max-width: 800px; 
-            margin: auto; 
-            background: #323232; /* Slightly lighter gray */
-            padding: 20px; 
-            border-radius: 10px; 
-            box-shadow: 0px 0px 10px rgba(255, 255, 255, 0.1); 
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Style M3U8 Player</title>
 
-        /* Input & Button Styles */
-        #m3u8-url { 
-            width: 80%; 
-            padding: 10px; 
-            border-radius: 5px; 
-            border: none; 
-            margin-bottom: 15px; 
-        }
-        button { 
-            padding: 10px 15px; 
-            border: none; 
-            background-color: #00C389; /* Green from the logo */
-            color: white; 
-            border-radius: 5px; 
-            cursor: pointer; 
-        }
-        button:hover { 
-            background-color: #00E6A1; /* Cyan shade from the logo */
-        }
+  <!-- ✅ Favicon -->
+  <link rel="icon" href="%PUBLIC_URL%/assets/play.svg" type="image/svg+xml" />
 
-        /* Video Container */
-        #video-container { 
-            position: relative; 
-            width: 100%; 
-            margin-top: 20px; 
-            border-radius: 10px; 
-            overflow: hidden; 
-        }
-        video { 
-            width: 100%; 
-            border-radius: 10px; 
-        }
+  <!-- ✅ Google Fonts (YouTube-style font) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
 
-        /* Live Indicator */
-        .live-indicator { 
-            display: none; 
-            color: red; 
-            font-weight: bold; 
-            margin-top: 10px; 
-        }
-
-        /* Quality Button */
-        .quality-container {
-            margin-top: 10px;
-            text-align: center;
-        }
-        .quality-button {
-            background: #00C389; /* Matching green */
-            padding: 8px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .quality-menu {
-            display: none;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            border-radius: 5px;
-            padding: 5px;
-            margin-top: 5px;
-        }
-        .quality-menu button { 
-            display: block; 
-            width: 100%; 
-            background: none; 
-            color: white; 
-            border: none; 
-            padding: 5px; 
-            cursor: pointer; 
-        }
-        .quality-menu button:hover { 
-            background: #00E6A1; /* Cyan highlight */
-        }
-    </style>
+  <!-- ✅ Stylesheet -->
+  <link rel="stylesheet" href="%PUBLIC_URL%/index.css" />
 </head>
 <body>
-    <div id="container">
-        <h2>M3U8 Player</h2>
-        <input type="text" id="m3u8-url" placeholder="Enter M3U8 URL">
-        <button onclick="loadStream()">Play</button>
-        <p class="live-indicator" id="live-indicator">● LIVE</p>
 
-        <!-- Video Player -->
-        <div id="video-container">
-            <video id="video" controls></video>
-        </div>
+  <div id="root"></div>
 
-        <!-- Quality Selection -->
-        <div class="quality-container">
-            <button class="quality-button" id="quality-button" onclick="toggleQualityMenu()">Quality</button>
-            <div class="quality-menu" id="quality-menu"></div>
-        </div>
-    </div>
-    
-    <script>
-        let hls;
-        function loadStream() {
-            const video = document.getElementById('video');
-            const url = document.getElementById('m3u8-url').value;
-            const liveIndicator = document.getElementById('live-indicator');
-            const qualityMenu = document.getElementById('quality-menu');
-            const qualityButton = document.getElementById('quality-button');
-            
-            if (Hls.isSupported()) {
-                hls = new Hls();
-                hls.loadSource(url);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play();
-                    liveIndicator.style.display = url.includes("live") ? 'block' : 'none';
-                    
-                    // Clear and update quality menu
-                    qualityMenu.innerHTML = '';
-                    hls.levels.forEach((level, index) => {
-                        let btn = document.createElement('button');
-                        btn.innerText = `${level.height}p`;
-                        btn.onclick = function() { 
-                            hls.currentLevel = index; 
-                            toggleQualityMenu(); 
-                        };
-                        qualityMenu.appendChild(btn);
-                    });
+  <!-- ✅ React App -->
+  <script src="%PUBLIC_URL%/index.js" type="text/javascript"></script>
 
-                    // Show quality button only if multiple quality levels exist
-                    qualityButton.style.display = hls.levels.length > 1 ? 'block' : 'none';
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = url;
-                video.addEventListener('loadedmetadata', function() {
-                    video.play();
-                    liveIndicator.style.display = url.includes("live") ? 'block' : 'none';
-                });
-            }
-        }
-
-        function toggleQualityMenu() {
-            const menu = document.getElementById('quality-menu');
-            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-        }
-    </script>
 </body>
 </html>
