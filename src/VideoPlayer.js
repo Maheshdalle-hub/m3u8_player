@@ -1,58 +1,80 @@
-import React, { useRef, useState, useEffect } from "react";
-import videojs from "video.js";
-import "video.js/dist/video-js.css";
-import "videojs-hls-quality-selector";
+import React, { useRef, useState } from "react";
 
 const VideoPlayer = () => {
   const videoRef = useRef(null);
-  const playerRef = useRef(null);
-  const [m3u8Url, setM3u8Url] = useState("");
+  const [startIndex, setStartIndex] = useState(28201);
+  const [endIndex, setEndIndex] = useState(28800);
+  const [baseUrl, setBaseUrl] = useState("http://d1kw75zcv4u98c.cloudfront.net/out/v1/287810d967cc428e9bd992002e55b72c/");
+  const [tokenParam, setTokenParam] = useState("?m=1733765650");
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!videoRef.current) return;
+  const playTSFiles = async () => {
+    setLoading(true);
+    const video = videoRef.current;
+    if (!video || !window.MediaSource) return;
 
-    playerRef.current = videojs(videoRef.current, {
-      controls: true,
-      autoplay: false,
-      fluid: true,
-      playbackRates: [0.5, 1, 1.25, 1.5, 2],
-    });
+    const mediaSource = new MediaSource();
+    video.src = URL.createObjectURL(mediaSource);
 
-    return () => {
-      if (playerRef.current) {
-        playerRef.current.dispose();
-      }
-    };
-  }, []);
+    mediaSource.addEventListener("sourceopen", async () => {
+      const sourceBuffer = mediaSource.addSourceBuffer('video/mp2t; codecs="avc1.42E01E, mp4a.40.2"');
 
-  const handleLoadM3U8 = () => {
-    if (playerRef.current && m3u8Url) {
-      playerRef.current.src({
-        src: m3u8Url,
-        type: "application/x-mpegURL",
-      });
+      for (let i = startIndex; i <= endIndex; i++) {
+        const tsUrl = `${baseUrl}index_${i}.ts${tokenParam}`;
+        try {
+          const response = await fetch(tsUrl);
+          const arrayBuffer = await response.arrayBuffer();
 
-      playerRef.current.ready(() => {
-        if (playerRef.current.hlsQualitySelector) {
-          playerRef.current.hlsQualitySelector({ displayCurrentQuality: true });
+          await new Promise((resolve) => {
+            sourceBuffer.addEventListener("updateend", resolve, { once: true });
+            sourceBuffer.appendBuffer(arrayBuffer);
+          });
+        } catch (error) {
+          console.error(`Failed to load ${tsUrl}`, error);
+          break;
         }
-      });
-    }
+      }
+
+      mediaSource.endOfStream();
+      setLoading(false);
+    });
   };
 
   return (
     <div>
       <input
         type="text"
-        placeholder="Enter M3U8 URL"
-        value={m3u8Url}
-        onChange={(e) => setM3u8Url(e.target.value)}
+        placeholder="Base URL (up to folder/)"
+        value={baseUrl}
+        onChange={(e) => setBaseUrl(e.target.value)}
       />
-      <button onClick={handleLoadM3U8}>Load Stream</button>
+      <input
+        type="number"
+        placeholder="Start Index"
+        value={startIndex}
+        onChange={(e) => setStartIndex(Number(e.target.value))}
+      />
+      <input
+        type="number"
+        placeholder="End Index"
+        value={endIndex}
+        onChange={(e) => setEndIndex(Number(e.target.value))}
+      />
+      <input
+        type="text"
+        placeholder="Token or Params (e.g., ?m=...)"
+        value={tokenParam}
+        onChange={(e) => setTokenParam(e.target.value)}
+      />
+      <button onClick={playTSFiles} disabled={loading}>
+        {loading ? "Loading..." : "Play .TS Stream"}
+      </button>
 
-      <div className="player-container">
-        <video ref={videoRef} className="video-js vjs-default-skin" />
-      </div>
+      <video
+        ref={videoRef}
+        controls
+        style={{ width: "100%", marginTop: "20px" }}
+      ></video>
     </div>
   );
 };
