@@ -1,80 +1,96 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import videojs from "video.js";
+import "video.js/dist/video-js.css";
 
 const VideoPlayer = () => {
   const videoRef = useRef(null);
-  const [startIndex, setStartIndex] = useState(28201);
-  const [endIndex, setEndIndex] = useState(28800);
-  const [baseUrl, setBaseUrl] = useState("http://d1kw75zcv4u98c.cloudfront.net/out/v1/287810d967cc428e9bd992002e55b72c/");
-  const [tokenParam, setTokenParam] = useState("?m=1733765650");
-  const [loading, setLoading] = useState(false);
+  const playerRef = useRef(null);
+  const [startTs, setStartTs] = useState("");
+  const [endTs, setEndTs] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
+  const [queryParam, setQueryParam] = useState("");
 
-  const playTSFiles = async () => {
-    setLoading(true);
-    const video = videoRef.current;
-    if (!video || !window.MediaSource) return;
+  const generateM3U8 = () => {
+    try {
+      const start = parseInt(startTs);
+      const end = parseInt(endTs);
 
-    const mediaSource = new MediaSource();
-    video.src = URL.createObjectURL(mediaSource);
+      if (isNaN(start) || isNaN(end) || end <= start) return "";
 
-    mediaSource.addEventListener("sourceopen", async () => {
-      const sourceBuffer = mediaSource.addSourceBuffer('video/mp2t; codecs="avc1.42E01E, mp4a.40.2"');
+      let playlist = "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n#EXT-X-MEDIA-SEQUENCE:0\n";
 
-      for (let i = startIndex; i <= endIndex; i++) {
-        const tsUrl = `${baseUrl}index_1_${i}.ts${tokenParam}`;
-        try {
-          const response = await fetch(tsUrl);
-          const arrayBuffer = await response.arrayBuffer();
-
-          await new Promise((resolve) => {
-            sourceBuffer.addEventListener("updateend", resolve, { once: true });
-            sourceBuffer.appendBuffer(arrayBuffer);
-          });
-        } catch (error) {
-          console.error(`Failed to load ${tsUrl}`, error);
-          break;
-        }
+      for (let i = start; i <= end; i++) {
+        playlist += `#EXTINF:10.0,\n${baseUrl}${i}.ts${queryParam}\n`;
       }
 
-      mediaSource.endOfStream();
-      setLoading(false);
-    });
+      playlist += "#EXT-X-ENDLIST";
+
+      const blob = new Blob([playlist], { type: "application/vnd.apple.mpegurl" });
+      return URL.createObjectURL(blob);
+    } catch {
+      return "";
+    }
   };
 
+  const handleLoadTS = () => {
+    const m3u8BlobUrl = generateM3U8();
+
+    if (playerRef.current) {
+      playerRef.current.src({
+        src: m3u8BlobUrl,
+        type: "application/x-mpegURL",
+      });
+      playerRef.current.play();
+    }
+  };
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+
+    playerRef.current = videojs(videoRef.current, {
+      controls: true,
+      autoplay: false,
+      fluid: true,
+      preload: "auto",
+    });
+
+    return () => {
+      if (playerRef.current) {
+        playerRef.current.dispose();
+      }
+    };
+  }, []);
+
   return (
-    <div>
+    <div style={{ padding: "20px" }}>
       <input
         type="text"
-        placeholder="Base URL (up to folder/)"
-        value={baseUrl}
+        placeholder="Base URL (without number)"
         onChange={(e) => setBaseUrl(e.target.value)}
       />
       <input
-        type="number"
-        placeholder="Start Index"
-        value={startIndex}
-        onChange={(e) => setStartIndex(Number(e.target.value))}
-      />
-      <input
-        type="number"
-        placeholder="End Index"
-        value={endIndex}
-        onChange={(e) => setEndIndex(Number(e.target.value))}
+        type="text"
+        placeholder="Start Number"
+        onChange={(e) => setStartTs(e.target.value)}
       />
       <input
         type="text"
-        placeholder="Token or Params (e.g., ?m=...)"
-        value={tokenParam}
-        onChange={(e) => setTokenParam(e.target.value)}
+        placeholder="End Number"
+        onChange={(e) => setEndTs(e.target.value)}
       />
-      <button onClick={playTSFiles} disabled={loading}>
-        {loading ? "Loading..." : "Play .TS Stream"}
-      </button>
+      <input
+        type="text"
+        placeholder="Query Param (e.g. ?m=...)"
+        onChange={(e) => setQueryParam(e.target.value)}
+      />
+      <button onClick={handleLoadTS}>Load Video</button>
 
       <video
         ref={videoRef}
+        className="video-js vjs-default-skin"
         controls
         style={{ width: "100%", marginTop: "20px" }}
-      ></video>
+      />
     </div>
   );
 };
