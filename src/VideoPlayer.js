@@ -20,7 +20,7 @@ const VideoPlayer = () => {
       const sourceBuffer = mediaSource.addSourceBuffer('video/mp2t; codecs="avc1.42E01E, mp4a.40.2"');
 
       for (let i = startIndex; i <= endIndex; i++) {
-        const tsUrl = `${baseUrl}index_${i}.ts${tokenParam}`;
+        const tsUrl = `${baseUrl}index_1_${i}.ts${tokenParam}`;
         try {
           const response = await fetch(tsUrl);
           const arrayBuffer = await response.arrayBuffer();
