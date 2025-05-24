@@ -6,6 +6,8 @@ import "videojs-hls-quality-selector";
 const VideoPlayer = () => {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
+  const lastTap = useRef(0);
+
   const [baseUrl, setBaseUrl] = useState("");
   const [startNum, setStartNum] = useState("");
   const [endNum, setEndNum] = useState("");
@@ -24,7 +26,7 @@ const VideoPlayer = () => {
       setStartNum(start);
       setEndNum(end);
       setQueryParam(query);
-      setAutoMode(true); // Hide inputs
+      setAutoMode(true);
       setTimeout(() => {
         generatePlaylist(url, start, end, query);
       }, 1000);
@@ -45,41 +47,65 @@ const VideoPlayer = () => {
       displayCurrentQuality: true,
     });
 
-    // Add gestures
-    const videoElement = videoRef.current;
-    let lastTap = 0;
+    const videoEl = videoRef.current;
+    const container = videoEl.parentElement;
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-    const handleGesture = (e) => {
-      const rect = videoElement.getBoundingClientRect();
-      const x = e.clientX - rect.left;
+    let holdTimeout = null;
+    let speedHeld = false;
 
-      const now = new Date().getTime();
-      const DOUBLE_TAP_DELAY = 300;
-
-      if (now - lastTap < DOUBLE_TAP_DELAY) {
-        if (x < rect.width / 2) {
-          playerRef.current.currentTime(playerRef.current.currentTime() - 10);
-        } else {
-          playerRef.current.currentTime(playerRef.current.currentTime() + 10);
+    const handleTouchStart = () => {
+      if (!isMobile) return;
+      holdTimeout = setTimeout(() => {
+        if (playerRef.current && !speedHeld) {
+          speedHeld = true;
+          playerRef.current.playbackRate(2);
         }
-      } else {
-        lastTap = now;
-        setTimeout(() => {
-          if (now === lastTap) {
-            if (playerRef.current.paused()) {
-              playerRef.current.play();
-            } else {
-              playerRef.current.pause();
-            }
-          }
-        }, DOUBLE_TAP_DELAY);
+      }, 1000);
+    };
+
+    const handleTouchEnd = () => {
+      if (!isMobile) return;
+      clearTimeout(holdTimeout);
+      if (playerRef.current && speedHeld) {
+        playerRef.current.playbackRate(1);
+        speedHeld = false;
       }
     };
 
-    videoElement.addEventListener("click", handleGesture);
+    const handleDoubleTap = (event) => {
+      const currentTime = Date.now();
+      const tapGap = currentTime - lastTap.current;
+      lastTap.current = currentTime;
+
+      const touch = event.changedTouches ? event.changedTouches[0] : event;
+      const rect = container.getBoundingClientRect();
+      const tapX = touch.clientX - rect.left;
+      const width = rect.width;
+
+      if (tapGap < 300) {
+        if (tapX < width / 3) {
+          playerRef.current.currentTime(playerRef.current.currentTime() - 10);
+        } else if (tapX > (2 * width) / 3) {
+          playerRef.current.currentTime(playerRef.current.currentTime() + 10);
+        } else {
+          playerRef.current.paused()
+            ? playerRef.current.play()
+            : playerRef.current.pause();
+        }
+      }
+    };
+
+    videoEl.addEventListener("touchstart", handleTouchStart);
+    videoEl.addEventListener("touchend", handleTouchEnd);
+    videoEl.addEventListener("touchend", handleDoubleTap);
+    videoEl.addEventListener("click", handleDoubleTap); // also works on desktop
 
     return () => {
-      videoElement.removeEventListener("click", handleGesture);
+      videoEl.removeEventListener("touchstart", handleTouchStart);
+      videoEl.removeEventListener("touchend", handleTouchEnd);
+      videoEl.removeEventListener("touchend", handleDoubleTap);
+      videoEl.removeEventListener("click", handleDoubleTap);
       if (playerRef.current) playerRef.current.dispose();
     };
   }, []);
