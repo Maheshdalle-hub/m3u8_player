@@ -36,6 +36,7 @@ const VideoPlayer = () => {
     if (!baseUrl || !startNum || !endNum) return;
 
     const qualities = {
+      240: 1,
       360: 2,
       480: 3,
       720: 5,
