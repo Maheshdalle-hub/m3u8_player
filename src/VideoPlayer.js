@@ -11,6 +11,27 @@ const VideoPlayer = () => {
   const [endNum, setEndNum] = useState("");
   const [queryParam, setQueryParam] = useState("");
 
+  // Read query parameters from URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const url = params.get("baseUrl");
+    const start = params.get("startNum");
+    const end = params.get("endNum");
+    const query = params.get("queryParam") || "";
+
+    if (url && start && end) {
+      setBaseUrl(url);
+      setStartNum(start);
+      setEndNum(end);
+      setQueryParam(query);
+
+      // Wait for player to initialize before loading
+      setTimeout(() => {
+        generatePlaylist(url, start, end, query);
+      }, 1000);
+    }
+  }, []);
+
   useEffect(() => {
     if (!videoRef.current) return;
 
@@ -32,8 +53,8 @@ const VideoPlayer = () => {
     };
   }, []);
 
-  const generatePlaylist = () => {
-    if (!baseUrl || !startNum || !endNum) return;
+  const generatePlaylist = (url = baseUrl, start = startNum, end = endNum, query = queryParam) => {
+    if (!url || !start || !end) return;
 
     const qualities = {
       240: 1,
@@ -48,8 +69,8 @@ const VideoPlayer = () => {
       const variantUrl = URL.createObjectURL(new Blob([
         `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n#EXT-X-MEDIA-SEQUENCE:0\n` +
           Array.from(
-            { length: Number(endNum) - Number(startNum) + 1 },
-            (_, i) => `#EXTINF:10.0,\n${baseUrl}index_${index}_${Number(startNum) + i}.ts${queryParam}`
+            { length: Number(end) - Number(start) + 1 },
+            (_, i) => `#EXTINF:10.0,\n${url}index_${index}_${Number(start) + i}.ts${query}`
           ).join("\n") +
           `\n#EXT-X-ENDLIST`
       ], { type: "application/vnd.apple.mpegurl" }));
@@ -92,7 +113,7 @@ const VideoPlayer = () => {
         value={queryParam}
         onChange={(e) => setQueryParam(e.target.value)}
       />
-      <button onClick={generatePlaylist}>Load Stream</button>
+      <button onClick={() => generatePlaylist()}>Load Stream</button>
 
       <div className="player-container">
         <video ref={videoRef} className="video-js vjs-default-skin" />
