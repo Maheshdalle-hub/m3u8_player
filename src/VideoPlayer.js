@@ -1,48 +1,15 @@
 import React, { useRef, useState, useEffect } from "react";
 import videojs from "video.js";
 import "video.js/dist/video-js.css";
+import "videojs-hls-quality-selector";
 
 const VideoPlayer = () => {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
-  const [startTs, setStartTs] = useState("");
-  const [endTs, setEndTs] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
+  const [startNum, setStartNum] = useState("");
+  const [endNum, setEndNum] = useState("");
   const [queryParam, setQueryParam] = useState("");
-
-  const generateM3U8 = () => {
-    try {
-      const start = parseInt(startTs);
-      const end = parseInt(endTs);
-
-      if (isNaN(start) || isNaN(end) || end <= start) return "";
-
-      let playlist = "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n#EXT-X-MEDIA-SEQUENCE:0\n";
-
-      for (let i = start; i <= end; i++) {
-        playlist += `#EXTINF:10.0,\n${baseUrl}${i}.ts${queryParam}\n`;
-      }
-
-      playlist += "#EXT-X-ENDLIST";
-
-      const blob = new Blob([playlist], { type: "application/vnd.apple.mpegurl" });
-      return URL.createObjectURL(blob);
-    } catch {
-      return "";
-    }
-  };
-
-  const handleLoadTS = () => {
-    const m3u8BlobUrl = generateM3U8();
-
-    if (playerRef.current) {
-      playerRef.current.src({
-        src: m3u8BlobUrl,
-        type: "application/x-mpegURL",
-      });
-      playerRef.current.play();
-    }
-  };
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -51,7 +18,11 @@ const VideoPlayer = () => {
       controls: true,
       autoplay: false,
       fluid: true,
-      preload: "auto",
+      playbackRates: [0.5, 1, 1.25, 1.5, 2],
+    });
+
+    playerRef.current.hlsQualitySelector({
+      displayCurrentQuality: true,
     });
 
     return () => {
@@ -61,36 +32,70 @@ const VideoPlayer = () => {
     };
   }, []);
 
+  const generatePlaylist = () => {
+    if (!baseUrl || !startNum || !endNum) return;
+
+    const qualities = {
+      360: 2,
+      480: 3,
+      720: 5,
+    };
+
+    let masterPlaylist = `#EXTM3U\n#EXT-X-VERSION:3\n`;
+
+    Object.entries(qualities).forEach(([label, index]) => {
+      const variantUrl = URL.createObjectURL(new Blob([
+        `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n#EXT-X-MEDIA-SEQUENCE:0\n` +
+          Array.from(
+            { length: Number(endNum) - Number(startNum) + 1 },
+            (_, i) => `#EXTINF:10.0,\n${baseUrl}index_${index}_${Number(startNum) + i}.ts${queryParam}`
+          ).join("\n") +
+          `\n#EXT-X-ENDLIST`
+      ], { type: "application/vnd.apple.mpegurl" }));
+
+      masterPlaylist += `#EXT-X-STREAM-INF:BANDWIDTH=${label}000,RESOLUTION=${label}x720\n${variantUrl}\n`;
+    });
+
+    const masterBlob = new Blob([masterPlaylist], { type: "application/vnd.apple.mpegurl" });
+    const masterUrl = URL.createObjectURL(masterBlob);
+
+    playerRef.current.src({
+      src: masterUrl,
+      type: "application/x-mpegURL",
+    });
+  };
+
   return (
-    <div style={{ padding: "20px" }}>
+    <div>
       <input
         type="text"
-        placeholder="Base URL (without number)"
+        placeholder="Base URL"
+        value={baseUrl}
         onChange={(e) => setBaseUrl(e.target.value)}
       />
       <input
         type="text"
         placeholder="Start Number"
-        onChange={(e) => setStartTs(e.target.value)}
+        value={startNum}
+        onChange={(e) => setStartNum(e.target.value)}
       />
       <input
         type="text"
         placeholder="End Number"
-        onChange={(e) => setEndTs(e.target.value)}
+        value={endNum}
+        onChange={(e) => setEndNum(e.target.value)}
       />
       <input
         type="text"
-        placeholder="Query Param (e.g. ?m=...)"
+        placeholder="Query Parameter"
+        value={queryParam}
         onChange={(e) => setQueryParam(e.target.value)}
       />
-      <button onClick={handleLoadTS}>Load Video</button>
+      <button onClick={generatePlaylist}>Load Stream</button>
 
-      <video
-        ref={videoRef}
-        className="video-js vjs-default-skin"
-        controls
-        style={{ width: "100%", marginTop: "20px" }}
-      />
+      <div className="player-container">
+        <video ref={videoRef} className="video-js vjs-default-skin" />
+      </div>
     </div>
   );
 };
