@@ -10,8 +10,8 @@ const VideoPlayer = () => {
   const [startNum, setStartNum] = useState("");
   const [endNum, setEndNum] = useState("");
   const [queryParam, setQueryParam] = useState("");
+  const [autoMode, setAutoMode] = useState(false);
 
-  // Read query parameters from URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const url = params.get("baseUrl");
@@ -24,8 +24,7 @@ const VideoPlayer = () => {
       setStartNum(start);
       setEndNum(end);
       setQueryParam(query);
-
-      // Wait for player to initialize before loading
+      setAutoMode(true); // Hide inputs
       setTimeout(() => {
         generatePlaylist(url, start, end, query);
       }, 1000);
@@ -46,10 +45,42 @@ const VideoPlayer = () => {
       displayCurrentQuality: true,
     });
 
-    return () => {
-      if (playerRef.current) {
-        playerRef.current.dispose();
+    // Add gestures
+    const videoElement = videoRef.current;
+    let lastTap = 0;
+
+    const handleGesture = (e) => {
+      const rect = videoElement.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+
+      const now = new Date().getTime();
+      const DOUBLE_TAP_DELAY = 300;
+
+      if (now - lastTap < DOUBLE_TAP_DELAY) {
+        if (x < rect.width / 2) {
+          playerRef.current.currentTime(playerRef.current.currentTime() - 10);
+        } else {
+          playerRef.current.currentTime(playerRef.current.currentTime() + 10);
+        }
+      } else {
+        lastTap = now;
+        setTimeout(() => {
+          if (now === lastTap) {
+            if (playerRef.current.paused()) {
+              playerRef.current.play();
+            } else {
+              playerRef.current.pause();
+            }
+          }
+        }, DOUBLE_TAP_DELAY);
       }
+    };
+
+    videoElement.addEventListener("click", handleGesture);
+
+    return () => {
+      videoElement.removeEventListener("click", handleGesture);
+      if (playerRef.current) playerRef.current.dispose();
     };
   }, []);
 
@@ -89,32 +120,35 @@ const VideoPlayer = () => {
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Base URL"
-        value={baseUrl}
-        onChange={(e) => setBaseUrl(e.target.value)}
-      />
-      <input
-        type="text"
-        placeholder="Start Number"
-        value={startNum}
-        onChange={(e) => setStartNum(e.target.value)}
-      />
-      <input
-        type="text"
-        placeholder="End Number"
-        value={endNum}
-        onChange={(e) => setEndNum(e.target.value)}
-      />
-      <input
-        type="text"
-        placeholder="Query Parameter"
-        value={queryParam}
-        onChange={(e) => setQueryParam(e.target.value)}
-      />
-      <button onClick={() => generatePlaylist()}>Load Stream</button>
-
+      {!autoMode && (
+        <>
+          <input
+            type="text"
+            placeholder="Base URL"
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Start Number"
+            value={startNum}
+            onChange={(e) => setStartNum(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="End Number"
+            value={endNum}
+            onChange={(e) => setEndNum(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Query Parameter"
+            value={queryParam}
+            onChange={(e) => setQueryParam(e.target.value)}
+          />
+          <button onClick={() => generatePlaylist()}>Load Stream</button>
+        </>
+      )}
       <div className="player-container">
         <video ref={videoRef} className="video-js vjs-default-skin" />
       </div>
