@@ -15,6 +15,7 @@ const VideoPlayer = () => {
       controls: true,
       autoplay: false,
       fluid: true,
+      liveui: false,
       playbackRates: [0.5, 1, 1.25, 1.5, 2],
     });
 
