@@ -34,10 +34,16 @@ const VideoPlayer = () => {
       });
 
       playerRef.current.ready(() => {
-        if (playerRef.current.hlsQualitySelector) {
-          playerRef.current.hlsQualitySelector({ displayCurrentQuality: true });
-        }
-      });
+  if (playerRef.current.hlsQualitySelector) {
+    playerRef.current.hlsQualitySelector({ displayCurrentQuality: true });
+  }
+
+  // ✅ Force timeline if available
+  playerRef.current.on("loadedmetadata", () => {
+    playerRef.current.removeClass("vjs-live"); // removes red LIVE UI
+    playerRef.current.controlBar?.progressControl?.show(); // show seek bar
+  });
+});
     }
   };
 
